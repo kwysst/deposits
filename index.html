@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Калькулятор Капитализации Вклада</title>
+	<style>
+	::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+		display: none;
+	}
+	
+	body {
+		font-family: sans-serif;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		min-height: 100vh;
+		background-color: #f4f4f4;
+		overflow: hidden;
+	}
+	
+	.calculator {
+		background-color: white;
+		padding: 20px;
+		border-radius: 8px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		width: 350px;
+		display: flex;
+		flex-direction: column;
+	}
+	
+	.form-group {
+		margin-bottom: 15px;
+		box-sizing: border-box;
+	}
+	
+	label {
+		display: block;
+		margin-bottom: 5px;
+		opacity: 0.8;
+	}
+	
+	input[type="number"] {
+		-moz-appearance: textfield;
+		width: calc(100% - 16px);
+		padding: 10px 8px 10px 8px;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 16px;
+	}
+	
+	input[type="number"]::-webkit-inner-spin-button,
+	input[type="number"]::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	
+	button {
+		background-color: #5cb85c;
+		color: white;
+		padding: 10px 15px;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		width: 100%;
+		margin-bottom: 5px;
+	}
+	
+	.statistics-button {
+		margin-top: 10px;
+	}
+	
+	button:hover {
+		background-color: #4cae4c;
+	}
+	
+	#result {
+		margin-bottom: 20px;
+		padding: 10px;
+		border: 1px solid #eee;
+		border-radius: 4px;
+		background-color: #f9f9f9;
+		white-space: pre-line;
+		min-height: 40px;
+		box-sizing: border-box;
+	}
+	
+	#statistics {
+		display: none;
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background-color: white;
+		padding: 20px;
+		border-radius: 8px;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		max-height: 80vh;
+		overflow-y: auto;
+		z-index: 1000;
+		max-width: 600px;
+	}
+	
+	#statistics h3 {
+		text-align: center;
+	}
+	
+	#statistics ul {
+		list-style: none;
+		padding-left: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	
+	#statistics ul li {
+		margin-bottom: 10px;
+		padding: 10px;
+		border-bottom: 1px solid #eee;
+		display: flex;
+		justify-content: space-between;
+	}
+    #statistics ul li span {
+		margin: 0 10px;
+        width: calc(100% - 20px);
+        display: flex ;
+        justify-content: center;
+        min-width: 77px;
+	}
+	
+	#statistics ul li:last-child {
+		border-bottom: none;
+	}
+	
+	.overlay {
+		display: none;
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+	}
+	</style>
+</head>
+
+<body>
+	<div class="calculator">
+		<h2>Калькулятор Вклада</h2>
+		<div class="form-group">
+			<label for="money">Стартовый капитал:</label>
+			<input type="number" id="money" value="10000" inputmode> </div>
+		<div class="form-group">
+			<label for="percent">Процентная ставка (годовых):</label>
+			<input type="number" id="percent" value="20" inputmode> </div>
+		<div class="form-group">
+			<label for="count">Количество месяцев:</label>
+			<input type="number" id="count" value="12" inputmode> </div>
+		<div class="form-group">
+			<label for="salary">Ежемесячное пополнение:</label>
+			<input type="number" id="salary" value="0" inputmode> </div>
+		<div id="result">Прибыль:
+            Прибыль в месяц: 
+            Вложено: </div>
+		<button onclick="calculate()">Рассчитать выплату</button>
+		<button class="statistics-button" onclick="toggleStatistics()">Показать статистику</button>
+	</div>
+	<div id="statistics" style="display:none;">
+		<h3>Статистика по месяцам</h3>
+		<ul id="monthly-stats"></ul>
+		<button onclick="toggleStatistics()">Закрыть</button>
+	</div>
+	<div class="overlay" onclick="toggleStatistics()"></div>
+	<script>
+    const LOCAL_STORAGE_KEY = 'calculatorInputs';
+	const oneMonthMoney = (money, percent) => money * percent * 30 / 365;
+	const deepthMoney = (money, percent, count, salary = 0, startMoney = null, startCount = null) => {
+		startCount = startCount || count;
+		startMoney = startMoney || money;
+		let monthlyStats = [];
+		let currentMoney = money;
+        let salaryMoney = 0;
+		for(let i = 1; i <= count; i++) {
+			currentMoney += salary;
+            salaryMoney += salary;
+			currentMoney += oneMonthMoney(currentMoney, percent);
+			monthlyStats.push({
+				month: i,
+				profit: Math.round(currentMoney - startMoney - salaryMoney),
+				totalMoney: Math.round(currentMoney)
+			})
+		}
+		if(count === 0) {
+			return [0, 0, startMoney, []]
+		};
+		return [Math.round(currentMoney - startMoney - salaryMoney), Math.round((currentMoney - startMoney - salaryMoney) / startCount), startMoney + salaryMoney, monthlyStats]
+	}
+
+	function calculate() {
+		const money = parseFloat(document.getElementById('money').value);
+		let percent = parseFloat(document.getElementById('percent').value);
+		percent = percent > 1 ? percent / 100 : percent;
+		const count = parseInt(document.getElementById('count').value);
+		const salary = parseFloat(document.getElementById('salary').value);
+		const result = deepthMoney(money, percent, count, salary);
+		const resultDiv = document.getElementById('result');
+		resultDiv.innerHTML = `Прибыль: ${result[0]} руб.\nПрибыль в месяц: ${result[1]} руб.\nВложено: ${result[2]} руб.`;
+		const stats = result[3];
+		const monthlyStatsList = document.getElementById("monthly-stats");
+		monthlyStatsList.innerHTML = "";
+		const listItem = document.createElement("li");
+			listItem.innerHTML = `<span>Месяц</span><span>Заработано</span><span>На вкладе</span>`;
+			monthlyStatsList.appendChild(listItem);
+        stats.forEach(stat => {
+			const listItem = document.createElement("li");
+			listItem.innerHTML = `<span>${stat.month}</span><span>${stat.profit} ₽</span><span>${stat.totalMoney} ₽</span>`;
+			monthlyStatsList.appendChild(listItem);
+		});
+        saveInputs();
+	}
+
+	function toggleStatistics() {
+		const statisticsDiv = document.getElementById('statistics');
+		const overlay = document.querySelector('.overlay');
+		if(statisticsDiv.style.display === 'none') {
+			statisticsDiv.style.display = 'block';
+			overlay.style.display = 'block';
+		} else {
+			statisticsDiv.style.display = 'none';
+			overlay.style.display = 'none';
+		}
+	}
+	
+    function saveInputs() {
+        const inputs = {
+            money: document.getElementById('money').value,
+            percent: document.getElementById('percent').value,
+            count: document.getElementById('count').value,
+            salary: document.getElementById('salary').value,
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inputs));
+    }
+    function loadInputs() {
+        const savedInputs = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedInputs) {
+            const inputs = JSON.parse(savedInputs);
+            document.getElementById('money').value = inputs.money;
+            document.getElementById('percent').value = inputs.percent;
+            document.getElementById('count').value = inputs.count;
+            document.getElementById('salary').value = inputs.salary;
+        }
+    }
+    loadInputs();
+    calculate();
+    </script>
+</body>
+
+</html>
